@@ -33,17 +33,15 @@ def fit(model, loss, opt, train_dataset, epochs, train_batch_size, max_steps=Non
 
         pbar.set_description(f"Loss: {loss_value:.4f}")
 
-        if SDP_ENABLED:
-            if i == 0:
-                sdp.broadcast_variables(model.variables, root_rank=0)
-                sdp.broadcast_variables(opt.variables(), root_rank=0)
-                first_batch = False
+        if SDP_ENABLED and i == 0:
+            sdp.broadcast_variables(model.variables, root_rank=0)
+            sdp.broadcast_variables(opt.variables(), root_rank=0)
+            first_batch = False
 
         if max_steps and i >= max_steps:
             break
 
-    train_results = {"loss": loss_value.numpy()}
-    return train_results
+    return {"loss": loss_value.numpy()}
 
 
 def get_datasets():
@@ -169,10 +167,6 @@ if __name__ == "__main__":
                 writer.write("%s = %s\n" % (key, value))
 
     # Save result
-    if SDP_ENABLED:
-        if sdp.rank() == 0:
-            model.save_pretrained(args.model_dir)
-            tokenizer.save_pretrained(args.model_dir)
-    else:
+    if SDP_ENABLED and sdp.rank() == 0 or not SDP_ENABLED:
         model.save_pretrained(args.model_dir)
         tokenizer.save_pretrained(args.model_dir)
